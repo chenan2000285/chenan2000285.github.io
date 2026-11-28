@@ -985,15 +985,22 @@
      于是出现「钱包 6 万亿、榜上 4 万亿」。
      这里按玩家实际拥有算：各星球累计之和 / 当前星球累计 / 钱包+股市压着的钱，取最大。 */
   function boardScore() {
+    // 排行榜口径：所有星球「赚过的钱」加在一起（每颗星球的累计收入只增不减，
+    // 花掉不会扣）。不拿当前钱包、也不拿股市浮盈去补，那两样不是收入。
     let sum = 0;
+    let seen = false;
     const pd = state.pdata;
     if (pd && typeof pd === 'object') {
       for (const k in pd) {
         const p = pd[k];
-        if (p && typeof p === 'object') sum += Number(p.total) || 0;
+        if (p && typeof p === 'object') {
+          sum += Number(p.total) || 0;
+          seen = true;
+        }
       }
     }
-    return Math.max(sum, Number(state.total) || 0, (Number(state.dust) || 0) + stockHeld());
+    // 当前星球的实时累计可能比快照新一点，取大，免得刚赚完还没落盘就少算
+    return seen ? Math.max(sum, Number(state.total) || 0) : Number(state.total) || 0;
   }
 
   const petBest = () => {
@@ -1289,6 +1296,13 @@
 
   // 把一份存档对象铺进内存（不做任何合并：合并在账号逻辑里是禁令）
   function hydrate(d) {
+    // 云存档顶层的 total 是「所有星球累计之和」，只给排行榜用；
+    // 本机需要的是当前星球的累计，换回上传时另存的真实值。
+    if (d && d.boardTotal != null) {
+      d.total = num(d.boardTotal);
+      delete d.boardTotal;
+    }
+    if (d && d.boardScore != null) delete d.boardScore;
     const base = newState();
     state = Object.assign(base, {
       dust: num(d.dust),
@@ -3339,9 +3353,14 @@
       stashPlanet();
       prunePlanets();
       const d = JSON.parse(JSON.stringify(state));
-      // 榜分单独带一个字段：total 还要留作「本星球累计」，不能被钱包污染
+      // 服务器的榜分只认顶层 total（它原本是「本星球累计」），所以上传副本里
+      // 换成「所有星球累计之和」；真实的本星球累计另存 boardTotal，拉档时还原，
+      // 绝不会把本机存档里的 total 改成分数。
       try {
-        d.boardScore = boardScore();
+        const bs = boardScore();
+        d.boardScore = bs;
+        d.boardTotal = Number(state.total) || 0;
+        d.total = bs;
       } catch (e) {}
       return d;
     },
