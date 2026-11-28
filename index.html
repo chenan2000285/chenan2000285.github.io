@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#12100c" />
+    <title>点点星球 · 晨安之作</title>
+    <!-- 样式用静态标签加载：浏览器解析到就当普通资源缓存，
+     即使下面的脚本出问题，页面也不会变成裸 HTML。
+     发新版时把 v= 后面的日期改大一位即可让所有设备重新下载。 -->
+    <link rel="stylesheet" href="style.css?v=1.9" />
+  </head>
+  <body data-world="0" data-phase="night">
+    <div id="ambient" aria-hidden="true"></div>
+
+    <main class="game">
+      <header class="top">
+        <div class="stat">
+          <span class="label">星尘</span>
+          <strong id="dust">0</strong>
+        </div>
+        <div class="stat stat-s">
+          <span class="label">每秒</span>
+          <strong id="cps">0</strong>
+        </div>
+        <button id="help" class="icon-btn" type="button" aria-label="玩法说明">?</button>
+        <button id="setBtn" class="icon-btn" type="button" aria-label="设置">⚙</button>
+      </header>
+
+      <div class="rank-bar">
+        <span class="rank-emoji" id="rankIcon">🌫️</span>
+        <div class="rank-info">
+          <span id="rankName">拾尘者</span>
+          <span class="rank-next" id="rankNext">加载中…</span>
+        </div>
+        <div class="rep">
+          <span class="label">声望</span>
+          <strong id="rep">0</strong>
+        </div>
+      </div>
+
+      <div class="world-bar">
+        <span class="world-emoji" id="worldEmoji">🪐</span>
+        <div class="world-info">
+          <span id="worldName">月亮</span>
+          <span class="world-sub" id="worldSub">第 1 颗星球</span>
+        </div>
+        <div class="world-ring">
+          <span id="worldPct">0/7</span>
+        </div>
+      </div>
+
+      <section id="stage" class="stage">
+        <canvas id="scene"></canvas>
+
+        <div class="stage-hud left">
+          <button id="wxChip" class="chip" type="button" title="天气与时间">☁️ 天气</button>
+        </div>
+        <div class="stage-hud right">
+          <button id="timeChip" class="chip" type="button" title="当前时间">--:--</button>
+        </div>
+
+        <div id="floatLayer" class="float-layer"></div>
+
+        <div id="petSay" class="pet-say hidden" aria-live="polite">
+          <span class="pet-say-av" id="petSayAv"></span>
+          <span class="pet-say-main">
+            <span class="pet-say-name" id="petSayName"></span>
+            <span class="pet-say-text" id="petSayText"></span>
+          </span>
+        </div>
+
+        <div id="combo" class="combo hidden" aria-live="polite">
+          <div class="combo-main">
+            <b id="comboNum">0</b>
+            <span class="combo-word">连锁</span>
+            <em id="comboBonus">+0%</em>
+          </div>
+          <i class="combo-bar"><s id="comboFill"></s></i>
+        </div>
+
+        <div class="stage-foot">
+          <span id="stageNote">🐾 宠物待命中</span>
+        </div>
+      </section>
+
+      <section class="reso" id="reso">
+        <div class="reso-head">
+          <span class="reso-title">星核共振</span>
+          <span class="reso-lv" id="resoLayers">共振 0/8 层</span>
+        </div>
+        <div class="reso-track" id="resoBar">
+          <div class="reso-zone" id="resoZone"></div>
+          <div class="reso-needle" id="resoNeedle"></div>
+        </div>
+        <div class="reso-foot">
+          <button id="resoBtn" class="reso-btn" type="button" aria-label="按住蓄力，进绿区松手">
+            <span class="reso-ico" aria-hidden="true">◉</span>
+          </button>
+          <span class="reso-hint" id="resoHint"></span>
+        </div>
+        <div class="reso-keys">键盘：任意键连点星球 · 按住 Q 蓄力共振（蓝牙/外接键盘都行）</div>
+      </section>
+
+      <p class="hint" id="hint">点点星球，收获星尘</p>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="up" type="button">升级</button>
+        <button class="tab" data-tab="asset" type="button">资产</button>
+        <button class="tab" data-tab="rank" type="button">身份</button>
+        <button class="tab" data-tab="stock" type="button">股市</button>
+        <button class="tab" data-tab="pets" type="button">宠物</button>
+        <button class="tab" data-tab="play" type="button">玩法</button>
+        <button class="tab" data-tab="leader" type="button">排行</button>
+      </nav>
+
+      <section class="panel active" id="panel-up">
+        <ul id="shop" class="shop-list"></ul>
+      </section>
+
+      <section class="panel" id="panel-asset">
+        <p class="panel-tip">买车买房攒声望，声望和星尘都够了才能晋升身份。</p>
+        <ul id="assets" class="shop-list"></ul>
+      </section>
+
+      <section class="panel" id="panel-rank">
+        <h2>身份</h2>
+        <p class="panel-tip">
+          每晋一级：星尘 ×2 · 点击力 ×1.5 · 自动产出 +25%。身份只升不降，门槛会按本星球的曲线递增。
+        </p>
+        <ul id="ranks" class="rank-list"></ul>
+
+        <div id="travelBox" class="travel-box hidden">
+          <button id="travel" class="travel" type="button">🔭 预览下一颗星球</button>
+          <p class="panel-tip" id="travelTip"></p>
+        </div>
+
+        <h2>星球图鉴</h2>
+        <ul id="worlds" class="world-list"></ul>
+
+        <h2>本星球成就 <span id="achCount" class="ach-count"></span></h2>
+        <ul id="achs" class="ach-list"></ul>
+
+        <h2>全局成就</h2>
+        <ul id="gachs" class="ach-list"></ul>
+      </section>
+
+      <section class="panel" id="panel-stock">
+        <div class="sys-head stock-head">
+          <div><b id="stkCapital">0</b><span id="stkBestTip">当前市值</span></div>
+          <div><b id="stkInvest">0</b><span>投入本金</span></div>
+          <div><b id="stkCashNow">0</b><span>手上星尘</span></div>
+          <div><b id="stkMult">×1.00</b><span>资本加成</span></div>
+          <div><b id="stkCash">0</b><span>股息收入</span></div>
+        </div>
+        <p class="panel-tip" id="stkTip">
+          低买高卖赚差价，持仓每 2
+          分钟分红一次。持仓市值（资本）会放大你所有产出，后期身份也要求它。<br />身份只看「手上星尘
+          + 投进股市的钱」，买了股票立刻算数，卖掉跟着变。
+        </p>
+        <ul id="stkList" class="stock-list"></ul>
+        <h2>市场动态</h2>
+        <ul id="stkNews" class="news-list"></ul>
+      </section>
+
+      <section class="panel" id="panel-pets">
+        <div class="sys-head">
+          <div><b id="petPower">0</b><span>宠物战力</span></div>
+          <div><b id="petMult">×1.00</b><span>宠物加成</span></div>
+          <div><b id="petDone">0</b><span>探索次数</span></div>
+        </div>
+        <h2>我的宠物 <span id="petCount" class="ach-count"></span></h2>
+        <p class="panel-tip">
+          宠物从开局就能用，每颗星球都有自己的伙伴。所有星球的伙伴进同一个图鉴：<b>换星球也带着走，已招募的会一起上场</b>（场上最多
+          8 只，战力高的优先）。点卡片上的「升 1
+          级」直接升一级、战力跟着涨：等级没有上限，但每升一级，下一级都要贵
+          ×1.5。摸摸只是攒亲密度。
+        </p>
+        <ul id="petList" class="pet-list"></ul>
+        <h2>宠物探索</h2>
+        <p class="panel-tip">
+          派宠物出门，按真实时间回来，一次带回一大笔星尘，比原来的星舰远征划算得多。宠物战力越高，能去的地方越远。
+        </p>
+        <ul id="petExp" class="exp-list"></ul>
+        <h2>皮肤商店</h2>
+        <p class="panel-tip">
+          每颗星球 4
+          款皮肤，用星尘购买；买到的皮肤穿在本星球的宠物身上，点宠物卡片上的「换肤」就能换。
+        </p>
+        <ul id="skinList" class="skin-list"></ul>
+      </section>
+
+      <section class="panel" id="panel-play">
+        <div class="sys-head">
+          <div><b id="miniEnergy">0/100</b><span>今日次数</span></div>
+          <div><b id="miniBadge">0</b><span>星章</span></div>
+          <div><b id="miniWins">0</b><span>小游戏胜利</span></div>
+        </div>
+        <h2 id="miniHead">无尽小游戏</h2>
+        <p class="panel-tip" id="miniTip">
+          三个无尽模式，一局没有终点，越玩越快。得分 = 操作次数 × 本星球倍率 ×
+          升级总倍率；每天最多玩 100 次，跨天自动重置。每赢 2 局得 1 枚星章，星章又加全局产出。
+        </p>
+        <ul id="miniList" class="mini-list"></ul>
+        <h2 id="idleTitle">挂机</h2>
+        <div class="idle-card" id="idleCard"></div>
+        <div id="idleClaim"></div>
+      </section>
+
+      <section class="panel" id="panel-leader">
+        <h2>星际排行</h2>
+        <p class="panel-tip">
+          榜上显示的是「累计星尘」=
+          你这辈子赚到的总数（花掉的也算），所以它会比你钱包里现在有的多。钱包星尘会显示在状态行里。
+        </p>
+        <div id="lbSetup" class="lb-setup hidden">
+          <p class="panel-tip small">
+            第一次用：把 Supabase 的 Project URL 和 anon key 粘进来，只存在这台手机上。
+          </p>
+          <input
+            id="lbUrl"
+            class="lb-input lb-full"
+            placeholder="https://xxxx.supabase.co"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+          <input
+            id="lbKey"
+            class="lb-input lb-full"
+            placeholder="anon public key"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+          <button id="lbSave" class="ghost wide" type="button">保存并连接</button>
+        </div>
+
+        <div id="meBox" class="me-box hidden">
+          <span class="me-name">已登录 <b id="meName"></b></span>
+          <button id="lbSync" class="ghost tiny" type="button">立即上传</button>
+          <button id="lbPull" class="ghost tiny hidden" type="button">重新拉取</button>
+          <button id="auOut" class="ghost tiny" type="button">退出</button>
+        </div>
+
+        <p class="panel-tip small" id="lbStatus" data-tone="idle">未配置云端</p>
+        <ol id="lbList" class="lb-list"></ol>
+        <button id="lbRefresh" class="ghost wide" type="button">刷新排行榜</button>
+
+        <div id="adminBox" class="admin-box hidden">
+          <h3 id="adminTitle">管理员后台</h3>
+          <p class="panel-tip small">
+            权限三档：普通 &lt; 管理员 &lt; 作者。管理员只能加（加分、解锁星球，每天 5
+            次）；作者不限次数，还能清空数据和管权限。
+          </p>
+          <p class="panel-tip small" id="adminQuota"></p>
+          <div class="admin-tools hidden" id="adAuthorTools">
+            <button id="adClearScores" class="ghost tiny danger" type="button">
+              一键清空全服数据
+            </button>
+          </div>
+          <div id="adminList"></div>
+        </div>
+      </section>
+
+      <footer class="bottom">
+        <span id="saveTip" class="tip">进度自动保存</span>
+        <span class="tip" id="verTip" title="代码版本，用来确认有没有加载到最新的">v1.9</span>
+        <span class="tip">© 晨安 · AI 辅助</span>
+        <button id="reset" class="reset" type="button">重置</button>
+      </footer>
+    </main>
+
+    <!-- ===== 登录 / 注册：不登录不能玩 ===== -->
+    <div id="loginGate" class="login-gate hidden">
+      <div class="login-box">
+        <div class="login-logo">点点星球</div>
+        <p class="login-sub">登录后开始玩 · 进度每 10 秒自动上传</p>
+        <div id="authBox" class="auth-box">
+          <input
+            id="auName"
+            class="lb-input lb-full"
+            maxlength="16"
+            placeholder="账号名（2–16 字）"
+            autocomplete="username"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+          <input
+            id="auPass"
+            class="lb-input lb-full"
+            type="password"
+            maxlength="64"
+            placeholder="密码"
+            autocomplete="current-password"
+          />
+          <div class="auth-acts">
+            <button id="auLogin" class="primary" type="button">登录</button>
+            <button id="auReg" class="ghost" type="button">注册</button>
+          </div>
+        </div>
+        <p class="login-tip">
+          新注册：密码至少 6 位，必须同时包含小写字母和数字。<br />登录老账号会用云端存档覆盖本机进度。
+        </p>
+        <button id="gateOffline" class="link-btn hidden" type="button">网络有问题？先离线玩</button>
+      </div>
+    </div>
+
+    <!-- ===== 开场 ===== -->
+    <div id="intro" class="intro">
+      <div class="intro-glow"></div>
+      <div class="intro-orbit"></div>
+      <div class="intro-logo" aria-label="点点星球">
+        <span style="--i: 0">点</span><span style="--i: 1">点</span><span style="--i: 2">星</span
+        ><span style="--i: 3">球</span>
+      </div>
+      <div class="intro-line"><i></i></div>
+      <p class="intro-sub">晨安之作 · CLICK THE COSMOS</p>
+      <p class="intro-skip">轻触任意处进入</p>
+    </div>
+
+    <!-- 新手说明 -->
+    <div id="guide" class="modal hidden">
+      <div class="modal-box">
+        <h2>欢迎来到点点星球 👋</h2>
+        <ol class="guide-list">
+          <li>点星球拿星尘，但<b>点击是全游戏最弱的赚钱方式</b>，只够启动。连锁、暴击只是添头。</li>
+          <li>
+            <b>玩法是随着星球一颗颗解锁的</b>，不是一上来全都塞给你：第 1
+            颗有点击/升级/资产/身份和<b>宠物</b>，之后依次开放共振、小游戏、股市、挂机。前几颗星球十几分钟就能通关，越往后身份门槛越高、耗时越长、数字越大。
+          </li>
+          <li>升级：每一项都只加一点，攒够星尘就去买。身份晋升要同时满足累计星尘和声望。</li>
+          <li>
+            第 2 颗星球起有<b>星核共振</b>：按住蓄力，松手落在绿区 +1 层，全产出 +7%（最高 8
+            层），22 秒不碰会掉层。
+          </li>
+          <li>
+            第 3 颗星球起有<b>小游戏</b>：每天最多玩 100 次，跨天自动重置；赢 2 局 1
+            枚星章，星章加全局产出，后期身份也要求星章。
+          </li>
+          <li>
+            第 4 颗星球起有<b>股市</b>：低买高卖赚差价，持仓每 2
+            分钟分红；市值越高，全局产出乘得越多，后面几个身份直接要求市值。
+          </li>
+          <li>
+            <b>宠物从开局就跟着你</b
+            >：每颗星球都有自己的伙伴，所有星球的伙伴进同一个图鉴，换星球也不会丢。点「升 1
+            级」直接升级、涨战力——等级没有上限，价钱每级
+            ×1.5。派它们出去探索，按真实时间回来给一大笔星尘。
+          </li>
+          <li>
+            第 6 颗星球起有<b>挂机</b>：关掉页面也按离线效率生产，最多累计 12
+            小时；「采集核心」把效率从 55% 拉到 100%。
+          </li>
+          <li>
+            一共十颗星球，前六颗是<b>月亮、地球、土星、太阳、中子星、黑洞</b>。每颗 9 个身份、10
+            项升级、7 种资产，正常玩到通关要好几天。
+          </li>
+          <li>
+            <b>账号与存档：</b
+            >不登录不能玩。登录老账号时，服务器上的存档会<b>整份覆盖</b>这台手机的进度（离线玩的进度会丢，这是故意的，绝不合并）；注册新账号则把这台手机的进度整份写进新号。登录后每
+            10 秒自动上传一次完整存档。
+          </li>
+          <li>
+            <b>各星球数据互相独立：</b
+            >身份、升级、资产、星尘、共振层数都按星球分开存，不会串到别的星球；没解锁的星球不参与统计，也不进排行榜。
+          </li>
+          <li>
+            <b>小游戏</b>是无尽模式，分数 = 操作次数 × 本星球倍率 ×
+            总倍率，越熟练分越高；<b>股市</b>按倍率结算，暴涨暴跌都是小概率，别指望连点刷钱。
+          </li>
+        </ol>
+        <p class="guide-copy">
+          点点星球 · 晨安之作 © 2026 · 美术、音效与代码由作者与 AI 辅助共同制作
+        </p>
+        <button id="guideOk" class="primary" type="button">开始游戏</button>
+      </div>
+    </div>
+
+    <!-- 星球预览 -->
+    <div id="previewModal" class="modal hidden">
+      <div class="modal-box preview-box">
+        <canvas id="previewScene" class="preview-scene"></canvas>
+        <h2 id="pvName">星球</h2>
+        <p class="clear-sub" id="pvDesc"></p>
+        <div class="pv-facts" id="pvFacts"></div>
+        <ul class="pv-ranks" id="pvRanks"></ul>
+        <div class="pv-actions">
+          <button id="pvCancel" class="ghost" type="button">关闭</button>
+          <button id="pvGo" class="primary" type="button">🚀 跃迁</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 天气 / 时间 -->
+    <div id="wxModal" class="modal hidden">
+      <div class="modal-box">
+        <h2>天气与时间</h2>
+        <p class="panel-tip" id="wxStatus">正在获取…</p>
+        <div class="wx-now" id="wxNow"></div>
+        <label class="field">
+          <span>天气城市</span>
+          <select id="citySelect"></select>
+        </label>
+        <div class="wx-actions">
+          <button id="wxAuto" class="ghost" type="button">📍 自动定位</button>
+          <button id="wxRefresh" class="ghost" type="button">🔄 刷新</button>
+        </div>
+        <p class="panel-tip small">
+          天气来自 Open-Meteo
+          免费接口（按手机定位或你选的城市），时间取自手机系统。没网时自动切换成模拟天气，画面仍会随小时和天气变化。
+        </p>
+        <button id="wxOk" class="primary" type="button">完成</button>
+      </div>
+    </div>
+
+    <!-- 全剧终 -->
+    <div id="clear" class="modal hidden">
+      <div class="modal-box clear-box">
+        <div class="clear-emoji" id="clearEmoji">🏆</div>
+        <h2 id="clearTitle">恭喜通关！</h2>
+        <p class="clear-sub" id="clearSub"></p>
+        <div class="clear-stats" id="clearStats"></div>
+        <button id="clearOk" class="primary" type="button">继续玩</button>
+      </div>
+    </div>
+
+    <!-- 小游戏 -->
+    <div id="miniModal" class="modal hidden">
+      <div class="modal-box mini-box">
+        <h2 id="miniTitle">小游戏</h2>
+        <p class="panel-tip" id="miniDesc"></p>
+        <div id="miniBody" class="mini-body"></div>
+        <div class="mini-foot">
+          <button id="miniClose" class="ghost" type="button">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confetti" class="confetti"></div>
+    <div id="flash" class="flash"></div>
+    <div id="toast" class="toast"></div>
+
+    <!-- ===== 设置 ===== -->
+    <div id="settings" class="modal hidden">
+      <div class="modal-box set-box">
+        <h2>设置</h2>
+        <div class="set-list">
+          <button class="set-row" id="setAdmin" type="button">
+            <span>🛠️ Admin 后台管理</span><em id="setAdminTip">需管理员账号</em>
+          </button>
+          <button class="set-row" id="setGuide" type="button">
+            <span>📖 玩法说明</span><em>全部规则</em>
+          </button>
+          <button class="set-row" id="setAccount" type="button">
+            <span>👤 登录账号管理</span><em id="setAccName">未登录</em>
+          </button>
+          <button class="set-row" id="setSfx" type="button">
+            <span>🔊 音效</span><em id="setSfxVal">开</em>
+          </button>
+          <button class="set-row" id="setFx" type="button">
+            <span>✨ 粒子特效</span><em id="setFxVal">开</em>
+          </button>
+          <button class="set-row" id="setMotion" type="button">
+            <span>🐢 省电模式</span><em id="setMotionVal">关</em>
+          </button>
+        </div>
+        <p class="set-copy">
+          点点星球 · 晨安之作 © 2026<br />美术、音效与代码由作者与 AI 辅助共同制作
+        </p>
+        <button id="setClose" class="primary" type="button">关闭</button>
+      </div>
+    </div>
+
+    <script>
+      /* 兜底：不依赖游戏脚本，任何浏览器都能关掉开场；点任意处/按任意键也能跳过 */
+      (function () {
+        function closeIntro() {
+          var el = document.getElementById('intro');
+          if (!el || el.style.display === 'none') return;
+          el.style.display = 'none';
+          try {
+            document.dispatchEvent(new Event('introDone'));
+          } catch (e) {}
+        }
+        window.__closeIntro = closeIntro;
+        var seen = false;
+        try {
+          seen = localStorage.getItem('aiweb.clicker.intro.v1') === '1';
+        } catch (e) {}
+        setTimeout(closeIntro, seen ? 2200 : 5200);
+        var types = ['pointerdown', 'touchstart', 'mousedown', 'click', 'keydown'];
+        function onAny() {
+          var el = document.getElementById('intro');
+          if (el && el.style.display !== 'none') closeIntro();
+        }
+        for (var k = 0; k < types.length; k++) {
+          document.addEventListener(types[k], onAny, true);
+        }
+      })();
+    </script>
+    <!-- 脚本用静态标签 + defer：浏览器并行下载、按顺序执行，
+     一个请求慢了也不会像串行链那样把后面全卡死。
+     版本号 v= 与上面的 style.css 保持一致，发新版时一起改。 -->
+    <script defer src="scene.min.js?v=1.9"></script>
+    <script defer src="pets.min.js?v=1.9"></script>
+    <script defer src="game.min.js?v=1.9"></script>
+    <script defer src="systems.min.js?v=1.9"></script>
+    <script defer src="fx.min.js?v=1.9"></script>
+    <script defer src="cloud.min.js?v=1.9"></script>
+  </body>
+</html>
