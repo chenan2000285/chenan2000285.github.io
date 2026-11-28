@@ -1,0 +1,25 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0;
+  background: #0f1115; color: #e7e9ee;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+body { min-height: 100dvh; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 28px 18px 40px; }
+h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: .5px; }
+.sub { color: #8b93a7; font-size: 13px; margin: 0 0 22px; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 380px) { .grid { grid-template-columns: 1fr; } }
+.card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 16px; border-radius: 16px; text-decoration: none; color: inherit;
+  background: linear-gradient(160deg, #1a1f2b, #151922);
+  border: 1px solid #232a38;
+  transition: transform .12s ease, border-color .12s ease;
+}
+.card:active { transform: scale(.97); border-color: #3b4a66; }
+.card .ico { font-size: 26px; line-height: 1; margin-bottom: 6px; }
+.card .t { font-size: 16px; font-weight: 600; }
+.card .d { font-size: 12px; color: #8b93a7; line-height: 1.4; }

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>纸牌接龙</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#0f1115;color:#e7e9ee;font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif;overscroll-behavior:none}
+.wrap{max-width:560px;margin:0 auto;padding:12px 10px calc(12px + env(safe-area-inset-bottom))}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.topbar .stat{font-size:13px;color:#8b93a7;font-variant-numeric:tabular-nums}
+.topbar .btns{display:flex;gap:6px}
+.topbar button{background:#1a1f2b;border:1px solid #2a3346;color:#e7e9ee;border-radius:9px;padding:7px 12px;font-size:13px;cursor:pointer}
+.rows{display:flex;flex-direction:column;gap:12px}
+.rowtop{display:flex;gap:6px}
+.slot{width:var(--cw);height:var(--ch);border-radius:8px;border:1.5px dashed #2a3346;background:#12161f;display:flex;align-items:center;justify-content:center;color:#3b4a66;font-size:18px}
+.stockbox{position:relative;width:var(--cw);height:var(--ch)}
+.wastebox{position:relative;width:var(--cw);height:var(--ch)}
+.foundbox{display:flex;gap:6px;margin-left:auto}
+.tabrow{display:flex;gap:6px;align-items:flex-start}
+.col{position:relative;width:var(--cw);border-radius:8px}
+.col .empty{width:var(--cw);height:var(--ch);border-radius:8px;border:1.5px dashed #2a3346;background:#12161f}
+.card{position:absolute;left:0;width:var(--cw);height:var(--ch);border-radius:8px;background:#f2f4f8;color:#161a22;border:1px solid #c9cfda;box-shadow:0 1px 2px rgba(0,0,0,.35);display:flex;flex-direction:column;justify-content:space-between;padding:3px 4px;font-weight:700;cursor:pointer;transition:transform .08s}
+.card .tl{font-size:calc(var(--cw)*.30);line-height:1}
+.card .br{align-self:flex-end;font-size:calc(var(--cw)*.30);line-height:1;transform:rotate(180deg)}
+.card.red{color:#c62828}
+.card.back{background:linear-gradient(135deg,#25406b,#1c3050);border-color:#3b5a8a;padding:0}
+.card.back::after{content:"";position:absolute;inset:3px;border-radius:5px;border:1.5px solid rgba(255,255,255,.18)}
+.card.sel{transform:translateY(-6px);box-shadow:0 0 0 2px #2f6fe4,0 4px 10px rgba(0,0,0,.5);z-index:9}
+.card.hint{box-shadow:0 0 0 2px #3ecf6a}
+.banner{margin-top:12px;text-align:center;font-size:14px;font-weight:600;min-height:20px;color:#3ecf6a}
+.overlay{position:fixed;inset:0;background:rgba(10,12,16,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+.overlay.hidden{display:none}
+.overlay .big{font-size:26px;font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="stat">步数 <b id="moves">0</b></div>
+    <div class="btns">
+      <button id="undoBtn">撤销</button>
+      <button id="newBtn">新局</button>
+    </div>
+  </div>
+  <div class="rows">
+    <div class="rowtop">
+      <div class="stockbox" id="stockbox"></div>
+      <div class="wastebox" id="wastebox"></div>
+      <div class="foundbox" id="foundbox"></div>
+    </div>
+    <div class="tabrow" id="tabrow"></div>
+  </div>
+  <div class="banner" id="banner"></div>
+</div>
+<div class="overlay hidden" id="overlay">
+  <div class="big">恭喜，通关了！</div>
+  <button id="ovNew" style="background:#2f6fe4;border:none;color:#fff;border-radius:10px;padding:12px 26px;font-size:15px;font-weight:600">再来一局</button>
+</div>
+<script>
+(function(){
+  var SUITS=['♠','♥','♦','♣'];
+  var RANKS=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  var stock=[], waste=[], found=[[],[],[],[]], tab=[[],[],[],[],[],[],[]];
+  var selected=null, moves=0, history=[], over=false;
+
+  function isRed(c){ return c.suit===1||c.suit===2; }
+  function snapshot(){
+    history.push(JSON.stringify({stock:stock,waste:waste,found:found,tab:tab,moves:moves}));
+    if(history.length>60) history.shift();
+  }
+  function restore(){
+    if(!history.length) return;
+    var s=JSON.parse(history.pop());
+    stock=s.stock; waste=s.waste; found=s.found; tab=s.tab; moves=s.moves;
+    selected=null; over=false;
+    document.getElementById('overlay').classList.add('hidden');
+    render();
+  }
+
+  function deck(){
+    var d=[];
+    for(var s=0;s<4;s++)for(var r=1;r<=13;r++) d.push({suit:s, rank:r, faceUp:false});
+    for(var i=d.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=d[i];d[i]=d[j];d[j]=t; }
+    return d;
+  }
+
+  function newGame(){
+    var d=deck();
+    stock=[]; waste=[]; found=[[],[],[],[]]; tab=[[],[],[],[],[],[],[]];
+    selected=null; moves=0; history=[]; over=false;
+    document.getElementById('overlay').classList.add('hidden');
+    document.getElementById('banner').textContent='';
+    for(var i=0;i<7;i++){
+      for(var j=0;j<=i;j++) tab[i].push(d.pop());
+      tab[i][tab[i].length-1].faceUp=true;
+    }
+    while(d.length) stock.push(d.pop());
+    render();
+  }
+
+  function cardEl(c, extra){
+    var el=document.createElement('div');
+    el.className='card'+(c.faceUp?(isRed(c)?' red':''):' back')+(extra||'');
+    if(c.faceUp){
+      el.innerHTML='<span class="tl">'+RANKS[c.rank]+SUITS[c.suit]+'</span><span class="br">'+RANKS[c.rank]+SUITS[c.suit]+'</span>';
+    }
+    return el;
+  }
+
+  function fit(){
+    var W=Math.min(window.innerWidth-20, 540);
+    var cw=Math.floor((W-6*6)/7);
+    cw=Math.max(30, Math.min(cw, 64));
+    var ch=Math.round(cw*1.42);
+    document.documentElement.style.setProperty('--cw', cw+'px');
+    document.documentElement.style.setProperty('--ch', ch+'px');
+    return {cw:cw, ch:ch};
+  }
+
+  function render(){
+    var dim=fit(), cw=dim.cw, ch=dim.ch;
+    var off=Math.round(ch*0.30);
+
+    // stock
+    var sb=document.getElementById('stockbox');
+    sb.innerHTML='';
+    if(stock.length){
+      var b=document.createElement('div');
+      b.className='card back';
+      b.style.position='relative';
+      sb.appendChild(b);
+    } else {
+      var e=document.createElement('div'); e.className='slot'; e.innerHTML='↻'; sb.appendChild(e);
+    }
+
+    // waste
+    var wb=document.getElementById('wastebox');
+    wb.innerHTML='';
+    if(waste.length){
+      var top=waste[waste.length-1];
+      var wc=cardEl(top, selected&&selected.type==='waste'?' sel':'');
+      wc.style.position='relative';
+      wb.appendChild(wc);
+    } else {
+      var e2=document.createElement('div'); e2.className='slot'; wb.appendChild(e2);
+    }
+
+    // foundations
+    var fb=document.getElementById('foundbox');
+    fb.innerHTML='';
+    for(var i=0;i<4;i++){
+      var box=document.createElement('div');
+      box.style.position='relative'; box.style.width='var(--cw)'; box.style.height='var(--ch)';
+      if(found[i].length){
+        var topc=found[i][found[i].length-1];
+        var fc=cardEl(topc, selected&&selected.type==='found'&&selected.i===i?' sel':'');
+        box.appendChild(fc);
+      } else {
+        var s=document.createElement('div'); s.className='slot'; s.textContent=SUITS[i]; box.appendChild(s);
+      }
+      fb.appendChild(box);
+    }
+
+    // tableau
+    var tr=document.getElementById('tabrow');
+    tr.innerHTML='';
+    for(var c=0;c<7;c++){
+      var col=document.createElement('div');
+      col.className='col';
+      col.dataset.col=c;
+      tr.appendChild(col);
+      if(!tab[c].length){
+        var em=document.createElement('div'); em.className='empty'; col.appendChild(em);
+      } else {
+        for(var k=0;k<tab[c].length;k++){
+          var card=tab[c][k];
+          var isSel=selected&&selected.type==='tab'&&selected.col===c&&k>=selected.idx;
+          var el=cardEl(card, isSel?' sel':'');
+          el.style.top=(k*off)+'px';
+          el.style.zIndex=k+1;
+          el.dataset.col=c; el.dataset.idx=k;
+          col.appendChild(el);
+        }
+        col.style.height=(ch+(tab[c].length-1)*off+8)+'px';
+      }
+    }
+
+    document.getElementById('moves').textContent=moves;
+    checkWin();
+  }
+
+  function checkWin(){
+    if(over) return;
+    for(var i=0;i<4;i++) if(found[i].length!==13) return;
+    over=true;
+    document.getElementById('overlay').classList.remove('hidden');
+  }
+
+  function canOnTab(card, col){
+    if(!tab[col].length) return card.rank===13;
+    var top=tab[col][tab[col].length-1];
+    if(!top.faceUp) return false;
+    return top.rank===card.rank+1 && isRed(top)!==isRed(card);
+  }
+  function canOnFound(card, i){
+    if(!found[i].length) return card.rank===1;
+    var top=found[i][found[i].length-1];
+    return top.suit===card.suit && top.rank===card.rank-1;
+  }
+
+  function flipTop(c){
+    if(tab[c].length && !tab[c][tab[c].length-1].faceUp) tab[c][tab[c].length-1].faceUp=true;
+  }
+
+  function moveToTab(col){
+    if(!selected) return false;
+    var from=selected, seq;
+    if(from.type==='tab'){
+      if(from.col===col) return false;
+      seq=tab[from.col].slice(from.idx);
+      if(!canOnTab(seq[0], col)) return false;
+      snapshot();
+      tab[from.col].length=from.idx;
+      flipTop(from.col);
+      for(var i=0;i<seq.length;i++) tab[col].push(seq[i]);
+    } else if(from.type==='waste'){
+      var c=waste[waste.length-1];
+      if(!canOnTab(c, col)) return false;
+      snapshot();
+      waste.pop(); tab[col].push(c);
+    } else if(from.type==='found'){
+      var f=found[from.i];
+      if(!f.length) return false;
+      var card=f[f.length-1];
+      if(!canOnTab(card, col)) return false;
+      snapshot();
+      f.pop(); tab[col].push(card);
+    } else return false;
+    moves++; selected=null; render(); return true;
+  }
+
+  function moveToFound(i){
+    if(!selected) return false;
+    var card=null, src=null;
+    if(selected.type==='tab'){
+      var seq=tab[selected.col].slice(selected.idx);
+      if(seq.length!==1) return false;
+      card=seq[0];
+      if(!canOnFound(card,i)) return false;
+      snapshot();
+      tab[selected.col].length=selected.idx;
+      flipTop(selected.col);
+    } else if(selected.type==='waste'){
+      card=waste[waste.length-1];
+      if(!canOnFound(card,i)) return false;
+      snapshot(); waste.pop();
+    } else if(selected.type==='found'){
+      if(selected.i!==i) return false;
+      return false;
+    } else return false;
+    found[i].push(card);
+    moves++; selected=null; render(); return true;
+  }
+
+  function draw(){
+    snapshot();
+    if(stock.length){
+      var c=stock.pop(); c.faceUp=true; waste.push(c);
+    } else if(waste.length){
+      while(waste.length){ var x=waste.pop(); x.faceUp=false; stock.push(x); }
+    }
+    moves++; selected=null; render();
+  }
+
+  // 点击处理
+  document.getElementById('stockbox').addEventListener('click', function(){ if(!over) draw(); });
+
+  document.getElementById('wastebox').addEventListener('click', function(){
+    if(over) return;
+    if(selected && selected.type==='waste'){ selected=null; render(); return; }
+    if(!waste.length) return;
+    selected={type:'waste'};
+    // 点击时先尝试移动到 foundation？不，保持简单
+    render();
+  });
+
+  document.getElementById('foundbox').addEventListener('click', function(e){
+    if(over) return;
+    var boxes=this.children;
+    for(var i=0;i<boxes.length;i++){
+      if(boxes[i].contains(e.target)){
+        if(selected){ if(moveToFound(i)) return; }
+        // 选中 foundation 顶牌
+        if(found[i].length && !selected){ selected={type:'found', i:i}; render(); }
+        return;
+      }
+    }
+  });
+
+  document.getElementById('tabrow').addEventListener('click', function(e){
+    if(over) return;
+    var cardEl=e.target.closest('.card');
+    if(cardEl){
+      var col=+cardEl.dataset.col, idx=+cardEl.dataset.idx;
+      if(selected && !(selected.type==='tab'&&selected.col===col&&idx>=selected.idx)){ moveToTab(col); return; }
+      if(selected && selected.type==='tab'&&selected.col===col&&idx>=selected.idx){ selected=null; render(); return; }
+      // 选中
+      var c=tab[col][idx];
+      if(!c.faceUp){
+        // 点背面牌：如果是该列最后一张且未翻开（不会发生），忽略
+        return;
+      }
+      selected={type:'tab', col:col, idx:idx};
+      render();
+      return;
+    }
+    var colEl=e.target.closest('.col');
+    if(colEl){
+      var cc=+colEl.dataset.col;
+      if(selected){ moveToTab(cc); return; }
+    }
+  });
+
+  document.getElementById('undoBtn').onclick=restore;
+  document.getElementById('newBtn').onclick=newGame;
+  document.getElementById('ovNew').onclick=newGame;
+  var rt; window.addEventListener('resize', function(){ clearTimeout(rt); rt=setTimeout(render,150); });
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  newGame();
+})();
+</script>
+</body>
+</html>

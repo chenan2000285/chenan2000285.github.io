@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>晨安的应用盒</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#0f1115;color:#e7e9ee;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.wrap{max-width:720px;margin:0 auto;padding:30px 18px 44px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.sub{color:#8b93a7;font-size:13px;margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (max-width:380px){.grid{grid-template-columns:1fr}}
+.card{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:16px;text-decoration:none;color:inherit;background:linear-gradient(160deg,#1a1f2b,#151922);border:1px solid #232a38;transition:transform .12s ease,border-color .12s ease}
+.card:active{transform:scale(.97);border-color:#3b4a66}
+.card .ico{font-size:26px;line-height:1;margin-bottom:6px}
+.card .t{font-size:16px;font-weight:600}
+.card .d{font-size:12px;color:#8b93a7;line-height:1.4}
+.card.wide{grid-column:1/-1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>晨安的应用盒</h1>
+  <p class="sub">手机电脑都能开 · 打开就能用</p>
+  <div class="grid">
+    <a class="card" href="/">
+      <span class="ico">✨</span><span class="t">点点星球</span>
+      <span class="d">点击收集星尘的放置小游戏</span>
+    </a>
+    <a class="card" href="/opusmc/">
+      <span class="ico">⛏️</span><span class="t">OpusMC</span>
+      <span class="d">网页版 Minecraft，纯 JS + WebGL2</span>
+    </a>
+    <a class="card" href="/games/">
+      <span class="ico">🎮</span><span class="t">小游戏合集</span>
+      <span class="d">2048 / 数独 / 扫雷 / 纸牌接龙</span>
+    </a>
+    <a class="card" href="/it-tools/">
+      <span class="ico">🧰</span><span class="t">IT-Tools 工具箱</span>
+      <span class="d">二维码、时间戳、JSON、密码等 80+ 小工具</span>
+    </a>
+    <a class="card wide" href="/excalidraw/">
+      <span class="ico">🎨</span><span class="t">Excalidraw 白板</span>
+      <span class="d">手绘风白板，手指直接画，可导出图片，自动存本地</span>
+    </a>
+  </div>
+</div>
+</body>
+</html>
