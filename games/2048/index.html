@@ -132,7 +132,7 @@ button:active{transform:scale(.97)}
     for(var ri=0;ri<SIZE;ri++)for(var ci=0;ci<SIZE;ci++){
       var r=rows[ri], c=cols[ci], t=grid[r][c];
       if(!t) continue;
-      var nr=r, nc=c;
+      var nr=r, nc=c, merged=false;
       while(true){
         var tr=nr+vec[0], tc=nc+vec[1];
         if(tr<0||tr>=SIZE||tc<0||tc>=SIZE) break;
@@ -150,14 +150,13 @@ button:active{transform:scale(.97)}
             (function(e){setTimeout(function(){ if(e&&e.parentNode) e.remove(); },110);})(el);
             delete tileEls[t.id];
           }
-          moved=true;
-          nr=tr; nc=tc;
+          moved=true; merged=true;
           break;
         }
         break;
       }
+      if(merged) continue;
       if(nr===r&&nc===c) continue;
-      if(grid[nr]===undefined) continue;
       grid[r][c]=null; grid[nr][nc]=t; t.r=nr; t.c=nc; moved=true;
     }
 

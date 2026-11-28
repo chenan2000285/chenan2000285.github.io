@@ -302,26 +302,25 @@ html,body{margin:0;min-height:100%;background:#0f1115;color:#e7e9ee;font-family:
 
   document.getElementById('tabrow').addEventListener('click', function(e){
     if(over) return;
+    var colEl=e.target.closest('.col');
+    if(!colEl) return;
+    var col=+colEl.dataset.col;
     var cardEl=e.target.closest('.card');
     if(cardEl){
-      var col=+cardEl.dataset.col, idx=+cardEl.dataset.idx;
-      if(selected && !(selected.type==='tab'&&selected.col===col&&idx>=selected.idx)){ moveToTab(col); return; }
-      if(selected && selected.type==='tab'&&selected.col===col&&idx>=selected.idx){ selected=null; render(); return; }
-      // 选中
-      var c=tab[col][idx];
-      if(!c.faceUp){
-        // 点背面牌：如果是该列最后一张且未翻开（不会发生），忽略
-        return;
+      var idx=+cardEl.dataset.idx;
+      if(selected){
+        // 点同一组里已选中的牌 = 取消选中
+        if(selected.type==='tab' && selected.col===col && idx>=selected.idx){ selected=null; render(); return; }
+        // 否则先尝试把它移到这里
+        if(moveToTab(col)) return;
       }
-      selected={type:'tab', col:col, idx:idx};
-      render();
+      // 移动失败或本来就没选：改选这张牌
+      var c=tab[col][idx];
+      if(c && c.faceUp){ selected={type:'tab', col:col, idx:idx}; render(); }
       return;
     }
-    var colEl=e.target.closest('.col');
-    if(colEl){
-      var cc=+colEl.dataset.col;
-      if(selected){ moveToTab(cc); return; }
-    }
+    // 点了列的空白处（空列也是）
+    if(selected) moveToTab(col);
   });
 
   document.getElementById('undoBtn').onclick=restore;
