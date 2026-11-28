@@ -1739,8 +1739,10 @@ class Game {
   capturePointer() {
     if (this.state !== 'play') return;
     const c = this.canvas, swallow = (p) => { if (p && p.catch) p.catch(() => { }); };
+    // 只请求普通指针锁定：unadjustedMovement 在部分系统/浏览器上会直接失败
     try {
-      const r = c.requestPointerLock({ unadjustedMovement: true });
+      if (c.focus) c.focus();
+      const r = c.requestPointerLock();
       if (r && r.catch) r.catch(() => { try { swallow(c.requestPointerLock()); } catch (e) { } });
     } catch (e) { try { swallow(c.requestPointerLock()); } catch (e2) { } }
   }

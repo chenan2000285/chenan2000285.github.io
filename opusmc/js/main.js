@@ -52,6 +52,15 @@ function bindInput(g) {
   document.addEventListener('pointerlockchange', () => {
     if (!locked()) { g.mouseBtn = [false, false, false]; g.keys = {}; if (g.state === 'play' && !ui.screen) ui.open(new PauseScreen(g)); }
   });
+  // 锁定失败时给个明确提示，而不是让玩家对着能看见的光标发呆
+  document.addEventListener('pointerlockerror', () => {
+    const d = document.getElementById('err');
+    if (!d) return;
+    d.style.display = 'block'; d.style.fontSize = '15px';
+    d.textContent = '浏览器没能锁定鼠标。请再点一下游戏画面；仍不行就按 F11 全屏，或换 Chrome / Edge 打开。';
+    clearTimeout(window.__lockErrT);
+    window.__lockErrT = setTimeout(() => { d.style.display = 'none'; }, 8000);
+  });
   window.addEventListener('mousemove', (e) => {
     if (locked() && !ui.screen && g.state === 'play') {
       const p = g.player, s = g.settings.sens * 0.006 + 0.0006;
