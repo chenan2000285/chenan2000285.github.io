@@ -62,12 +62,18 @@ function bindInput(g) {
     window.__lockErrT = setTimeout(() => { d.style.display = 'none'; }, 8000);
   });
   window.addEventListener('mousemove', (e) => {
-    if (locked() && !ui.screen && g.state === 'play') {
-      const p = g.player, s = g.settings.sens * 0.006 + 0.0006;
-      if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return; // browser glitch spikes
-      p.yaw -= e.movementX * s;
-      p.pitch = clamp(p.pitch - e.movementY * s, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
-    } else ui.mouseMove(e);
+    if (g.state === 'play' && !ui.screen) {
+      // 未锁定时（手机浏览器常锁不住指针）按住鼠标也能转视角
+      const dragging = !locked() && (e.buttons & 3) !== 0;
+      if (locked() || dragging) {
+        const p = g.player, s = g.settings.sens * 0.006 + 0.0006;
+        if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return; // browser glitch spikes
+        p.yaw -= e.movementX * s;
+        p.pitch = clamp(p.pitch - e.movementY * s, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
+        return;
+      }
+    }
+    ui.mouseMove(e);
   });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   ui.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -76,7 +82,11 @@ function bindInput(g) {
     Sound.init();
     if (ui.screen) { ui.mouseDown(e); return; }
     if (g.state !== 'play') return;
-    if (!locked()) { g.capturePointer(); return; }
+    if (!locked()) {
+      const t = performance.now();
+      if (!g._lastCap || t - g._lastCap > 1500) { g._lastCap = t; g.capturePointer(); }
+      return;
+    }
     g.mouseBtn[e.button] = true;
     if (e.button === 0) { g.mouseClicked0 = true; g.attackCd = Math.min(g.attackCd, 0); if (!g.targetEntity && !g.target) g.player.swingT = 6; }
     if (e.button === 2) g.useCd = 0;

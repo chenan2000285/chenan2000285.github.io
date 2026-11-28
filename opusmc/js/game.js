@@ -1740,11 +1740,25 @@ class Game {
     if (this.state !== 'play') return;
     const c = this.canvas, swallow = (p) => { if (p && p.catch) p.catch(() => { }); };
     // 只请求普通指针锁定：unadjustedMovement 在部分系统/浏览器上会直接失败
-    try {
-      if (c.focus) c.focus();
-      const r = c.requestPointerLock();
-      if (r && r.catch) r.catch(() => { try { swallow(c.requestPointerLock()); } catch (e) { } });
-    } catch (e) { try { swallow(c.requestPointerLock()); } catch (e2) { } }
+    const doLock = () => {
+      try {
+        if (c.focus) c.focus();
+        const r = c.requestPointerLock();
+        if (r && r.catch) r.catch(() => { try { swallow(c.requestPointerLock()); } catch (e) { } });
+      } catch (e) { try { swallow(c.requestPointerLock()); } catch (e2) { } }
+    };
+    // 手机 + 外接鼠标：Android Chrome 通常要先全屏，才肯把指针交给网页
+    const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '');
+    const canFs = document.fullscreenElement == null && document.documentElement.requestFullscreen;
+    if (mobile && canFs) {
+      try {
+        const f = document.documentElement.requestFullscreen();
+        if (f && f.then) f.then(() => setTimeout(doLock, 80)).catch(doLock);
+        else setTimeout(doLock, 80);
+      } catch (e) { doLock(); }
+    } else {
+      doLock();
+    }
   }
   releasePointer() { if (document.pointerLockElement) document.exitPointerLock(); }
 }
