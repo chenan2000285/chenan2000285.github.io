@@ -1046,8 +1046,9 @@
       return;
     }
     var secs = dest.min * 60;
+    // 探索收益：基础公式整体 ×2（玩家要求提高探索产出，否则节奏太慢）
     var reward = Math.round(
-      D().cps * secs * dest.rate + 600 * gain() + petPower() * dest.rate * 0.5
+      (D().cps * secs * dest.rate + 600 * gain() + petPower() * dest.rate * 0.5) * 2
     );
     pets().exps[slot] = {
       dest: dest.id,
@@ -1081,6 +1082,22 @@
     if (window.DDFX) DDFX.sfx.mini(true);
     D().checkAchs();
     D().checkRanks();
+    render(true);
+    D().save();
+  }
+
+  // 探索中反悔：宠物立刻回来，这次不产出星尘（已出发的收益不折半，直接作废）
+  function cancelTrip(slot) {
+    var e = pets().exps[slot];
+    if (!e || Date.now() >= e.endsAt) return;
+    var pet = BY_ID[e.pet] || species()[0];
+    var tip =
+      '取消这次探索？' + (pet ? pet.name : '宠物') + ' 会马上回来，但这次不会带回星尘。';
+    if (typeof window.confirm === 'function' && !window.confirm(tip)) return;
+    pets().exps[slot] = null;
+    if (pet) speakLine(pet, 'idle', '那我不去啦～');
+    D().toast('↩️ 已取消探索，' + (pet ? pet.name : '宠物') + ' 回来了（没有奖励）', 2200);
+    if (window.DDFX) DDFX.sfx.mini(false);
     render(true);
     D().save();
   }
@@ -1640,16 +1657,20 @@
             ' 预计带回 ' +
             D().fmt(e.reward) +
             ' 星尘</div>' +
-            '<button type="button" class="exp-claim" data-claim="' +
+            '<button type="button" class="exp-claim' +
+            (Date.now() < e.endsAt ? ' exp-cancel' : '') +
+            '" data-claim="' +
             idx +
-            '"' +
-            (Date.now() < e.endsAt ? ' disabled' : '') +
-            '>' +
-            (Date.now() < e.endsAt ? '探索中' : '领取') +
+            '">' +
+            (Date.now() < e.endsAt ? '取消探索' : '领取') +
             '</button>';
           var c = li.querySelector('[data-claim]');
           c.addEventListener('click', function () {
-            claim(idx);
+            var cur = pets().exps[idx];
+            if (!cur) return;
+            // 还在路上 → 取消；已经归来 → 领取
+            if (Date.now() < cur.endsAt) cancelTrip(idx);
+            else claim(idx);
           });
           slotEls.push({ li: li, left: li.querySelector('[data-left]'), btn: c, endsAt: e.endsAt });
         }
@@ -1717,9 +1738,11 @@
       if (s.left) s.left.textContent = left > 0 ? fmtLeft(left) : '已归来';
       if (s.btn) {
         var ready = left <= 0;
-        if (s.btn.disabled === ready) {
-          s.btn.disabled = !ready;
-          s.btn.textContent = ready ? '领取' : '探索中';
+        // 倒计时结束时把「取消探索」换成「领取」
+        if (s.btn.dataset.ready !== String(ready)) {
+          s.btn.dataset.ready = String(ready);
+          s.btn.classList.toggle('exp-cancel', !ready);
+          s.btn.textContent = ready ? '领取' : '取消探索';
         }
       }
     });

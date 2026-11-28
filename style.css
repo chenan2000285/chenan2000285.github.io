@@ -1946,6 +1946,13 @@ body[data-world='9'] {
   color: #f6ecda;
   font-weight: 600;
 }
+/* 探索中的「取消探索」：弱化视觉，别让人误以为能领奖励 */
+.exp-claim.exp-cancel {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 150, 130, 0.35);
+  color: #b8968a;
+  font-weight: 400;
+}
 button:disabled {
   opacity: 0.4;
 }
