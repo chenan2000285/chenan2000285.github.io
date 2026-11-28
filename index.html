@@ -8,7 +8,7 @@
     <!-- 样式用静态标签加载：浏览器解析到就当普通资源缓存，
      即使下面的脚本出问题，页面也不会变成裸 HTML。
      发新版时把 v= 后面的日期改大一位即可让所有设备重新下载。 -->
-    <link rel="stylesheet" href="style.css?v=2.1" />
+    <link rel="stylesheet" href="style.css?v=2.2" />
   </head>
   <body data-world="0" data-phase="night">
     <div id="ambient" aria-hidden="true"></div>
@@ -502,11 +502,11 @@
     <!-- 脚本用静态标签 + defer：浏览器并行下载、按顺序执行，
      一个请求慢了也不会像串行链那样把后面全卡死。
      版本号 v= 与上面的 style.css 保持一致，发新版时一起改。 -->
-    <script defer src="scene.js?v=2.1"></script>
-    <script defer src="pets.js?v=2.1"></script>
-    <script defer src="game.js?v=2.1"></script>
-    <script defer src="systems.js?v=2.1"></script>
-    <script defer src="fx.js?v=2.1"></script>
-    <script defer src="cloud.js?v=2.1"></script>
+    <script defer src="scene.js?v=2.2"></script>
+    <script defer src="pets.js?v=2.2"></script>
+    <script defer src="game.js?v=2.2"></script>
+    <script defer src="systems.js?v=2.2"></script>
+    <script defer src="fx.js?v=2.2"></script>
+    <script defer src="cloud.js?v=2.2"></script>
   </body>
 </html>

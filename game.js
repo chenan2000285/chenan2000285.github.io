@@ -979,6 +979,23 @@
   const stockHeld = () => Math.max(stockInvest(), capBest());
   const rankDust = () => Math.max(state.total, state.dust + stockHeld());
 
+  /* ---- 排行榜分数 ----
+     线上榜分以前直接取 state.total，那是「本星球累计真实收入」：
+     跃迁带过来的现金、股市收益、挂机收益都不在里面，
+     于是出现「钱包 6 万亿、榜上 4 万亿」。
+     这里按玩家实际拥有算：各星球累计之和 / 当前星球累计 / 钱包+股市压着的钱，取最大。 */
+  function boardScore() {
+    let sum = 0;
+    const pd = state.pdata;
+    if (pd && typeof pd === 'object') {
+      for (const k in pd) {
+        const p = pd[k];
+        if (p && typeof p === 'object') sum += Number(p.total) || 0;
+      }
+    }
+    return Math.max(sum, Number(state.total) || 0, (Number(state.dust) || 0) + stockHeld());
+  }
+
   const petBest = () => {
     const m = state.pets && state.pets.powerBest;
     return m && typeof m === 'object' ? Number(m[state.world]) || 0 : 0;
@@ -3321,7 +3338,12 @@
     exportData: function () {
       stashPlanet();
       prunePlanets();
-      return JSON.parse(JSON.stringify(state));
+      const d = JSON.parse(JSON.stringify(state));
+      // 榜分单独带一个字段：total 还要留作「本星球累计」，不能被钱包污染
+      try {
+        d.boardScore = boardScore();
+      } catch (e) {}
+      return d;
     },
     importData: function (d) {
       if (!d || typeof d !== 'object') return false;
